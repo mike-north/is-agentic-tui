@@ -47,6 +47,9 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# API Extractor temp files
+temp/
+
 # Optional npm cache directory
 .npm
 
@@ -142,3 +145,5 @@ vite.config.ts.timestamp-*
 
 # Claude code local settings
 .claude/*.local*.json
+# Claude Code local configuration (auto-added)
+.claude/*.local.*

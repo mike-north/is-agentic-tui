@@ -9,5 +9,5 @@ Detects whether code is running inside an agentic TUI application.
 **Signature:**
 
 ```typescript
-type AgenticTui = "claude-code" | "cursor-agent" | "gemini-cli" | "aider" | "unknown";
+type AgenticTui = "claude-code" | "cursor-agent" | "gemini-cli" | "aider" | "codex" | "cline" | "kiro-cli" | "opencode" | "unknown";
 ```

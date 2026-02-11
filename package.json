@@ -1,45 +1,65 @@
 {
   "name": "is-agentic-tui",
-  "version": "0.0.1",
   "description": "Detect if code is running inside an agentic TUI (Claude Code, Cursor, Gemini CLI, etc.)",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "version": "0.0.1",
+  "author": "",
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8",
+    "@eslint/js": "^9.39.2",
+    "@microsoft/api-documenter": "^7.28.9",
+    "@microsoft/api-extractor": "^7.56.3",
+    "@types/node": "^18.19.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "knip": "^5.83.1",
+    "syncpack": "^13.0.4",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.55.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/is-agentic-tui.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
     "dist"
   ],
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
-  },
   "keywords": [
+    "agentic",
+    "aider",
     "claude",
     "claude-code",
     "cursor",
+    "detection",
     "gemini",
-    "aider",
-    "agentic",
-    "tui",
     "terminal",
-    "detection"
+    "tui"
   ],
-  "author": "",
   "license": "ISC",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "packageManager": "pnpm@10.24.0",
-  "devDependencies": {
-    "@types/node": "^25.2.3",
-    "typescript": "^5.9.3",
-    "vitest": "^3.0.0"
+  "scripts": {
+    "build": "tsup && api-extractor run --local && api-documenter markdown -i temp -o docs",
+    "build:ci": "tsup && api-extractor run",
+    "changeset": "changeset",
+    "knip": "knip",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "release": "pnpm build:ci && changeset publish",
+    "syncpack": "syncpack lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "version": "changeset version"
   },
-  "engines": {
-    "node": ">=18"
-  }
+  "type": "module",
+  "types": "./dist/is-agentic-tui.d.ts"
 }

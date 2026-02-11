@@ -45,7 +45,7 @@ function detectClaudeCode(): DetectionResult | null {
   }
 
   const claudePath = process.env["CLAUDE_PATH"];
-  if (claudePath !== undefined && claudePath.includes("claude-code")) {
+  if (claudePath?.includes("claude-code")) {
     signals.push(`CLAUDE_PATH contains "claude-code"`);
   }
 
@@ -137,7 +137,7 @@ function detectAider(): DetectionResult | null {
 }
 
 // All detector functions
-const detectors: Array<() => DetectionResult | null> = [
+const detectors: (() => DetectionResult | null)[] = [
   detectClaudeCode,
   detectCursorAgent,
   detectGeminiCli,

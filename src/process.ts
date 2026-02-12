@@ -39,8 +39,14 @@ export function getAncestorProcessNames(maxDepth = 10): string[] {
         break;
       }
 
-      const parentPid = parseInt(match[1], 10);
-      const comm = match[2].trim();
+      const ppidStr = match[1];
+      const commStr = match[2];
+      if (ppidStr === undefined || commStr === undefined) {
+        break;
+      }
+
+      const parentPid = parseInt(ppidStr, 10);
+      const comm = commStr.trim();
 
       names.push(comm);
       pid = parentPid;

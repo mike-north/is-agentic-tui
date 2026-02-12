@@ -20,7 +20,7 @@ describe("Codex UAT", () => {
 
   it("should detect codex with high confidence from inside Codex", () => {
     const stdout = execSync(
-      `codex exec --full-auto "Run this exact command and return only its output: node ${scriptPath}"`,
+      `codex exec --full-auto "Run this exact command and return only its output: node \\"${scriptPath}\\""`,
       { encoding: "utf-8", timeout: 60_000, env: cleanEnv() },
     );
     const result = parseDetectionOutput(stdout);

@@ -27,7 +27,7 @@ describe("Kiro CLI UAT", () => {
   // We strip all detection vars EXCEPT kiro-cli's own — those come from the
   // shell integration and are the signal we're testing for.
   it("should detect kiro-cli with high confidence from inside a kiro-cli terminal", () => {
-    const stdout = execSync(`node ${scriptPath}`, {
+    const stdout = execSync(`node "${scriptPath}"`, {
       encoding: "utf-8",
       timeout: 60_000,
       env: cleanEnvExcept(["Q_TERM", "QTERM_SESSION_ID"]),

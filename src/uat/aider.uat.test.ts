@@ -24,7 +24,7 @@ describe("Aider UAT", () => {
     // Using --message with a natural language prompt doesn't work because the LLM
     // may refuse to run shell commands.
     const stdout = execSync(
-      `aider --message "/run node ${scriptPath}" --yes --no-gitignore`,
+      `aider --message "/run node \\"${scriptPath}\\"" --yes --no-gitignore`,
       { encoding: "utf-8", timeout: 60_000, env: cleanEnv() },
     );
     const result = parseDetectionOutput(stdout);

@@ -122,13 +122,14 @@ function detectGeminiCli(): DetectionResult | null {
 /**
  * Detects Aider.
  *
- * Note: Detection signals for Aider need to be empirically verified.
- * This is a placeholder.
+ * Aider sets OR_APP_NAME=Aider and OR_SITE_URL=https://aider.chat when using
+ * OpenRouter as a provider. The AIDER=1 environment variable is a potential
+ * future signal but not currently set by Aider.
  */
 function detectAider(): DetectionResult | null {
   const signals: string[] = [];
 
-  // Check for AIDER environment variable (hypothetical)
+  // Check for AIDER environment variable (future signal, not currently set)
   if (process.env["AIDER"] === "1") {
     signals.push("AIDER=1");
     return {
@@ -188,7 +189,8 @@ function detectCodex(): DetectionResult | null {
  * Detects Cline (VS Code extension).
  *
  * Cline sets CLINE_ACTIVE=true when running commands.
- * Verified from source: src/integrations/terminal/TerminalRegistry.ts
+ * Verified from Cline's upstream source: src/integrations/terminal/TerminalRegistry.ts
+ * (in the cline/cline GitHub repository)
  */
 function detectCline(): DetectionResult | null {
   if (process.env["CLINE_ACTIVE"] === "true") {

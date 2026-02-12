@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import { tmpdir } from "node:os";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = resolve(__dirname, "../../dist");
@@ -30,7 +30,7 @@ export function writeDetectionScript(): { scriptPath: string; tmpDir: string } {
   const scriptPath = join(tmpDir, "detect.mjs");
   writeFileSync(
     scriptPath,
-    `import { whichAgenticTui } from "file://${distIndex}";\nconsole.log(JSON.stringify(whichAgenticTui()));\n`,
+    `import { whichAgenticTui } from "${pathToFileURL(distIndex).href}";\nconsole.log(JSON.stringify(whichAgenticTui()));\n`,
   );
   return { scriptPath, tmpDir };
 }

@@ -20,7 +20,7 @@ describe("Gemini CLI UAT", () => {
 
   it("should detect gemini-cli with high confidence from inside Gemini CLI", () => {
     const stdout = execSync(
-      `gemini -p "Run this exact command and return only its output: node ${scriptPath}"`,
+      `gemini -p "Run this exact command and return only its output: node \\"${scriptPath}\\""`,
       { encoding: "utf-8", timeout: 60_000, env: cleanEnv() },
     );
     const result = parseDetectionOutput(stdout);

@@ -20,7 +20,7 @@ describe("Claude Code UAT", () => {
 
   it("should detect claude-code with high confidence from inside Claude Code", () => {
     const stdout = execSync(
-      `claude -p "Run this exact command and return only its output: node ${scriptPath}" --allowedTools Bash`,
+      `claude -p "Run this exact command and return only its output: node \\"${scriptPath}\\"" --allowedTools Bash`,
       { encoding: "utf-8", timeout: 60_000, env: cleanEnv() },
     );
     const result = parseDetectionOutput(stdout);

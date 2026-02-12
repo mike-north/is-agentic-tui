@@ -51,7 +51,7 @@ const spinner = ora({
 ```ts
 import { whichAgenticTui } from "is-agentic-tui";
 
-function handleError(error: Error) {
+function handleError(error: NodeJS.ErrnoException) {
   const agent = whichAgenticTui();
 
   if (agent) {

@@ -51,12 +51,13 @@ if (isSpecificAgenticTui("claude-code")) {
 
 | Tool | Environment Variable | Confidence |
 |------|---------------------|------------|
-| Claude Code | `CLAUDECODE=1` | High |
-| Claude Code | `CLAUDE_CODE_ENTRYPOINT` | Medium |
-| Cursor Agent | `CURSOR_AGENT=1` | High |
-| Cursor Agent | `CURSOR_INVOKED_AS=cursor-agent` | Medium |
-| Gemini CLI | `GEMINI_CLI=1` | High |
-| Aider | `AIDER=1` | High* |
+| Claude Code | `CLAUDECODE=1` | `high` |
+| Claude Code | `CLAUDE_CODE_ENTRYPOINT` | `medium` |
+| Claude Code | `CLAUDE_PATH` contains `"claude-code"` | `medium` |
+| Cursor Agent | `CURSOR_AGENT=1` | `high` |
+| Cursor Agent | `CURSOR_INVOKED_AS=cursor-agent` | `medium` |
+| Gemini CLI | `GEMINI_CLI=1` | `high` |
+| Aider | `AIDER=1` | `high`* |
 
 *Aider detection is currently unverified and may need adjustment based on actual Aider behavior.
 
@@ -71,11 +72,8 @@ Returns `true` if running inside any detected agentic TUI.
 Returns detailed detection information, or `null` if not in an agentic TUI.
 
 ```ts
-interface DetectionResult {
-  tool: "claude-code" | "cursor-agent" | "gemini-cli" | "aider" | "unknown";
-  confidence: "high" | "medium";
-  signals: string[];
-}
+import type { DetectionResult } from "is-agentic-tui";
+// DetectionResult has: tool, confidence, and signals properties
 ```
 
 ### `isSpecificAgenticTui(tool: AgenticTui): boolean`

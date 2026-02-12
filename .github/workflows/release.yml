@@ -14,6 +14,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    environment: npm-publish
     steps:
       - uses: actions/checkout@v4
 

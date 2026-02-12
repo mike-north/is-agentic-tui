@@ -14,6 +14,12 @@ When a tool changes its env var behavior, this helps identify the breaking versi
 | Gemini CLI  | `gemini`   | 0.26.0         | 0.26.0          | `GEMINI_CLI=1`                                        | binary found, transient 429 rate limit |
 | Aider       | `aider`    | 0.86.1         | 0.86.1          | `OR_APP_NAME=Aider`, `OR_SITE_URL=https://aider.chat` | passing                                |
 
+## Process Tree Detection (no env var signal)
+
+| Tool              | Binary    | First Verified | Latest Verified | Detection Method       | Status  |
+| ----------------- | --------- | -------------- | --------------- | ---------------------- | ------- |
+| GitHub Copilot CLI | `copilot` | —              | —               | ancestor process name  | pending |
+
 ## Shell-Integration Detection (not subprocess-injected)
 
 | Tool     | Binary     | First Verified | Latest Verified | Env Vars Detected            | Notes                                                                                                                |

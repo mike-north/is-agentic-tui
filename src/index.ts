@@ -7,6 +7,10 @@ export type AgenticTui =
   | "cursor-agent"
   | "gemini-cli"
   | "aider"
+  | "codex"
+  | "cline"
+  | "kiro-cli"
+  | "opencode"
   | "unknown";
 
 /**
@@ -41,11 +45,12 @@ function detectClaudeCode(): DetectionResult | null {
 
   // Secondary signals (less reliable, but still indicative)
   if (process.env["CLAUDE_CODE_ENTRYPOINT"] !== undefined) {
-    signals.push(`CLAUDE_CODE_ENTRYPOINT=${process.env["CLAUDE_CODE_ENTRYPOINT"]}`);
+    signals.push(
+      `CLAUDE_CODE_ENTRYPOINT=${process.env["CLAUDE_CODE_ENTRYPOINT"]}`,
+    );
   }
 
-  const claudePath = process.env["CLAUDE_PATH"];
-  if (claudePath?.includes("claude-code")) {
+  if (process.env["CLAUDE_PATH"]?.includes("claude-code")) {
     signals.push(`CLAUDE_PATH contains "claude-code"`);
   }
 
@@ -117,19 +122,128 @@ function detectGeminiCli(): DetectionResult | null {
 /**
  * Detects Aider.
  *
- * Note: Detection signals for Aider need to be empirically verified.
- * This is a placeholder.
+ * Aider sets OR_APP_NAME=Aider and OR_SITE_URL=https://aider.chat when using
+ * OpenRouter as a provider. The AIDER=1 environment variable is a potential
+ * future signal but not currently set by Aider.
  */
 function detectAider(): DetectionResult | null {
   const signals: string[] = [];
 
-  // Check for AIDER environment variable (hypothetical)
+  // Check for AIDER environment variable (future signal, not currently set)
   if (process.env["AIDER"] === "1") {
     signals.push("AIDER=1");
     return {
       tool: "aider",
       confidence: "high",
       signals,
+    };
+  }
+
+  // Aider sets OR_APP_NAME=Aider when using OpenRouter as a provider.
+  // OR_SITE_URL=https://aider.chat is also present but OR_APP_NAME alone
+  // is sufficient for detection.
+  if (process.env["OR_APP_NAME"] === "Aider") {
+    signals.push("OR_APP_NAME=Aider");
+    if (process.env["OR_SITE_URL"] === "https://aider.chat") {
+      signals.push("OR_SITE_URL=https://aider.chat");
+    }
+    return {
+      tool: "aider",
+      confidence: "high",
+      signals,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Detects Codex (OpenAI).
+ *
+ * Codex sets CODEX_SANDBOX when running in its sandbox environment
+ * (e.g. "seatbelt"). CODEX_THREAD_ID is also present as a UUID.
+ */
+function detectCodex(): DetectionResult | null {
+  // Primary signal: CODEX_SANDBOX exists
+  if (process.env["CODEX_SANDBOX"] !== undefined) {
+    return {
+      tool: "codex",
+      confidence: "high",
+      signals: [`CODEX_SANDBOX=${process.env["CODEX_SANDBOX"]}`],
+    };
+  }
+
+  // Secondary signal: CODEX_THREAD_ID exists
+  if (process.env["CODEX_THREAD_ID"] !== undefined) {
+    return {
+      tool: "codex",
+      confidence: "medium",
+      signals: [`CODEX_THREAD_ID=${process.env["CODEX_THREAD_ID"]}`],
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Detects Cline (VS Code extension).
+ *
+ * Cline sets CLINE_ACTIVE=true when running commands.
+ * Verified from Cline's upstream source: src/integrations/terminal/TerminalRegistry.ts
+ * (in the cline/cline GitHub repository)
+ */
+function detectCline(): DetectionResult | null {
+  if (process.env["CLINE_ACTIVE"] === "true") {
+    return {
+      tool: "cline",
+      confidence: "high",
+      signals: ["CLINE_ACTIVE=true"],
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Detects Kiro CLI (formerly Amazon Q Developer CLI).
+ *
+ * Kiro CLI sets Q_TERM to a version string (e.g. "1.24.1").
+ * QTERM_SESSION_ID is also present as a UUID.
+ */
+function detectKiroCli(): DetectionResult | null {
+  // Primary signal: Q_TERM exists
+  if (process.env["Q_TERM"] !== undefined) {
+    return {
+      tool: "kiro-cli",
+      confidence: "high",
+      signals: [`Q_TERM=${process.env["Q_TERM"]}`],
+    };
+  }
+
+  // Secondary signal: QTERM_SESSION_ID exists
+  if (process.env["QTERM_SESSION_ID"] !== undefined) {
+    return {
+      tool: "kiro-cli",
+      confidence: "medium",
+      signals: [`QTERM_SESSION_ID=${process.env["QTERM_SESSION_ID"]}`],
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Detects OpenCode.
+ *
+ * Note: Detection signals for OpenCode need to be empirically verified.
+ * Based on anomalyco fork PR #1780 which sets OPENCODE=1.
+ */
+function detectOpencode(): DetectionResult | null {
+  if (process.env["OPENCODE"] === "1") {
+    return {
+      tool: "opencode",
+      confidence: "high",
+      signals: ["OPENCODE=1"],
     };
   }
 
@@ -142,6 +256,10 @@ const detectors: (() => DetectionResult | null)[] = [
   detectCursorAgent,
   detectGeminiCli,
   detectAider,
+  detectCodex,
+  detectCline,
+  detectKiroCli,
+  detectOpencode,
 ];
 
 /**

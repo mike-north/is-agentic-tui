@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { isAgenticTui, whichAgenticTui, isSpecificAgenticTui } from "./index.js";
+import {
+  isAgenticTui,
+  whichAgenticTui,
+  isSpecificAgenticTui,
+} from "./index.js";
 
 describe("isAgenticTui", () => {
   const originalEnv = process.env;
@@ -7,6 +11,22 @@ describe("isAgenticTui", () => {
   beforeEach(() => {
     // Create a fresh copy of process.env for each test
     process.env = { ...originalEnv };
+    // Clear all agentic TUI signals to prevent real env from leaking
+    delete process.env["CLAUDECODE"];
+    delete process.env["CLAUDE_CODE_ENTRYPOINT"];
+    delete process.env["CLAUDE_PATH"];
+    delete process.env["CURSOR_AGENT"];
+    delete process.env["CURSOR_INVOKED_AS"];
+    delete process.env["GEMINI_CLI"];
+    delete process.env["AIDER"];
+    delete process.env["CODEX_SANDBOX"];
+    delete process.env["CODEX_THREAD_ID"];
+    delete process.env["CLINE_ACTIVE"];
+    delete process.env["Q_TERM"];
+    delete process.env["QTERM_SESSION_ID"];
+    delete process.env["OPENCODE"];
+    delete process.env["OR_APP_NAME"];
+    delete process.env["OR_SITE_URL"];
   });
 
   afterEach(() => {
@@ -23,6 +43,14 @@ describe("isAgenticTui", () => {
       delete process.env["CURSOR_INVOKED_AS"];
       delete process.env["GEMINI_CLI"];
       delete process.env["AIDER"];
+      delete process.env["CODEX_SANDBOX"];
+      delete process.env["CODEX_THREAD_ID"];
+      delete process.env["CLINE_ACTIVE"];
+      delete process.env["Q_TERM"];
+      delete process.env["QTERM_SESSION_ID"];
+      delete process.env["OPENCODE"];
+      delete process.env["OR_APP_NAME"];
+      delete process.env["OR_SITE_URL"];
     });
 
     it("should return false", () => {
@@ -38,6 +66,10 @@ describe("isAgenticTui", () => {
       expect(isSpecificAgenticTui("cursor-agent")).toBe(false);
       expect(isSpecificAgenticTui("gemini-cli")).toBe(false);
       expect(isSpecificAgenticTui("aider")).toBe(false);
+      expect(isSpecificAgenticTui("codex")).toBe(false);
+      expect(isSpecificAgenticTui("cline")).toBe(false);
+      expect(isSpecificAgenticTui("kiro-cli")).toBe(false);
+      expect(isSpecificAgenticTui("opencode")).toBe(false);
     });
   });
 
@@ -116,7 +148,9 @@ describe("isAgenticTui", () => {
         expect(result).not.toBeNull();
         expect(result?.tool).toBe("claude-code");
         expect(result?.confidence).toBe("medium");
-        expect(result?.signals.some((s) => s.includes("CLAUDE_PATH"))).toBe(true);
+        expect(result?.signals.some((s) => s.includes("CLAUDE_PATH"))).toBe(
+          true,
+        );
       });
     });
   });
@@ -167,7 +201,45 @@ describe("isAgenticTui", () => {
     });
   });
 
+  describe("Gemini CLI detection", () => {
+    beforeEach(() => {
+      delete process.env["CLAUDECODE"];
+      delete process.env["CURSOR_AGENT"];
+      delete process.env["GEMINI_CLI"];
+    });
 
+    describe("with GEMINI_CLI=1 (high confidence)", () => {
+      beforeEach(() => {
+        process.env["GEMINI_CLI"] = "1";
+      });
+
+      it("isAgenticTui should return true", () => {
+        expect(isAgenticTui()).toBe(true);
+      });
+
+      it("whichAgenticTui should return gemini-cli with high confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("gemini-cli");
+        expect(result?.confidence).toBe("high");
+        expect(result?.signals).toContain("GEMINI_CLI=1");
+      });
+
+      it("isSpecificAgenticTui('gemini-cli') should return true", () => {
+        expect(isSpecificAgenticTui("gemini-cli")).toBe(true);
+      });
+    });
+
+    describe("with GEMINI_CLI set to non-1 value", () => {
+      beforeEach(() => {
+        process.env["GEMINI_CLI"] = "true";
+      });
+
+      it("should not detect", () => {
+        expect(whichAgenticTui()?.tool).not.toBe("gemini-cli");
+      });
+    });
+  });
 
   describe("Aider detection", () => {
     beforeEach(() => {
@@ -192,6 +264,226 @@ describe("isAgenticTui", () => {
         expect(result).not.toBeNull();
         expect(result?.tool).toBe("aider");
         expect(result?.confidence).toBe("high");
+      });
+    });
+
+    describe("with OR_APP_NAME=Aider (OpenRouter signal, high confidence)", () => {
+      beforeEach(() => {
+        process.env["OR_APP_NAME"] = "Aider";
+        process.env["OR_SITE_URL"] = "https://aider.chat";
+      });
+
+      it("isAgenticTui should return true", () => {
+        expect(isAgenticTui()).toBe(true);
+      });
+
+      it("whichAgenticTui should return aider with high confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("aider");
+        expect(result?.confidence).toBe("high");
+        expect(result?.signals).toContain("OR_APP_NAME=Aider");
+        expect(result?.signals).toContain("OR_SITE_URL=https://aider.chat");
+      });
+    });
+
+    describe("with only OR_APP_NAME=Aider (no OR_SITE_URL)", () => {
+      beforeEach(() => {
+        process.env["OR_APP_NAME"] = "Aider";
+      });
+
+      it("whichAgenticTui should still detect aider", () => {
+        const result = whichAgenticTui();
+        expect(result?.tool).toBe("aider");
+        expect(result?.confidence).toBe("high");
+        expect(result?.signals).toContain("OR_APP_NAME=Aider");
+        expect(result?.signals).not.toContain("OR_SITE_URL=https://aider.chat");
+      });
+    });
+
+    describe("with OR_APP_NAME set to something other than Aider", () => {
+      beforeEach(() => {
+        process.env["OR_APP_NAME"] = "SomeOtherApp";
+      });
+
+      it("should not detect aider", () => {
+        expect(whichAgenticTui()?.tool).not.toBe("aider");
+      });
+    });
+  });
+
+  describe("Codex detection", () => {
+    beforeEach(() => {
+      delete process.env["CLAUDECODE"];
+      delete process.env["CURSOR_AGENT"];
+      delete process.env["CODEX_SANDBOX"];
+      delete process.env["CODEX_THREAD_ID"];
+    });
+
+    describe("with CODEX_SANDBOX (high confidence)", () => {
+      beforeEach(() => {
+        process.env["CODEX_SANDBOX"] = "seatbelt";
+      });
+
+      it("isAgenticTui should return true", () => {
+        expect(isAgenticTui()).toBe(true);
+      });
+
+      it("whichAgenticTui should return codex with high confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("codex");
+        expect(result?.confidence).toBe("high");
+        expect(result?.signals).toContain("CODEX_SANDBOX=seatbelt");
+      });
+
+      it("isSpecificAgenticTui('codex') should return true", () => {
+        expect(isSpecificAgenticTui("codex")).toBe(true);
+      });
+    });
+
+    describe("with only CODEX_THREAD_ID (medium confidence)", () => {
+      beforeEach(() => {
+        process.env["CODEX_THREAD_ID"] = "abc-123-def";
+      });
+
+      it("isAgenticTui should return true", () => {
+        expect(isAgenticTui()).toBe(true);
+      });
+
+      it("whichAgenticTui should return codex with medium confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("codex");
+        expect(result?.confidence).toBe("medium");
+      });
+    });
+  });
+
+  describe("Cline detection", () => {
+    beforeEach(() => {
+      delete process.env["CLAUDECODE"];
+      delete process.env["CURSOR_AGENT"];
+      delete process.env["CLINE_ACTIVE"];
+    });
+
+    describe("with CLINE_ACTIVE=true (high confidence)", () => {
+      beforeEach(() => {
+        process.env["CLINE_ACTIVE"] = "true";
+      });
+
+      it("isAgenticTui should return true", () => {
+        expect(isAgenticTui()).toBe(true);
+      });
+
+      it("whichAgenticTui should return cline with high confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("cline");
+        expect(result?.confidence).toBe("high");
+        expect(result?.signals).toContain("CLINE_ACTIVE=true");
+      });
+
+      it("isSpecificAgenticTui('cline') should return true", () => {
+        expect(isSpecificAgenticTui("cline")).toBe(true);
+      });
+    });
+
+    describe("with CLINE_ACTIVE set to non-true value", () => {
+      beforeEach(() => {
+        process.env["CLINE_ACTIVE"] = "1";
+      });
+
+      it("should not detect", () => {
+        expect(whichAgenticTui()?.tool).not.toBe("cline");
+      });
+    });
+  });
+
+  describe("Kiro CLI detection", () => {
+    beforeEach(() => {
+      delete process.env["CLAUDECODE"];
+      delete process.env["CURSOR_AGENT"];
+      delete process.env["Q_TERM"];
+      delete process.env["QTERM_SESSION_ID"];
+    });
+
+    describe("with Q_TERM (high confidence)", () => {
+      beforeEach(() => {
+        process.env["Q_TERM"] = "1.24.1";
+      });
+
+      it("isAgenticTui should return true", () => {
+        expect(isAgenticTui()).toBe(true);
+      });
+
+      it("whichAgenticTui should return kiro-cli with high confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("kiro-cli");
+        expect(result?.confidence).toBe("high");
+        expect(result?.signals).toContain("Q_TERM=1.24.1");
+      });
+
+      it("isSpecificAgenticTui('kiro-cli') should return true", () => {
+        expect(isSpecificAgenticTui("kiro-cli")).toBe(true);
+      });
+    });
+
+    describe("with only QTERM_SESSION_ID (medium confidence)", () => {
+      beforeEach(() => {
+        process.env["QTERM_SESSION_ID"] = "session-uuid-123";
+      });
+
+      it("isAgenticTui should return true", () => {
+        expect(isAgenticTui()).toBe(true);
+      });
+
+      it("whichAgenticTui should return kiro-cli with medium confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("kiro-cli");
+        expect(result?.confidence).toBe("medium");
+      });
+    });
+  });
+
+  describe("OpenCode detection", () => {
+    beforeEach(() => {
+      delete process.env["CLAUDECODE"];
+      delete process.env["CURSOR_AGENT"];
+      delete process.env["OPENCODE"];
+    });
+
+    describe("with OPENCODE=1 (high confidence)", () => {
+      beforeEach(() => {
+        process.env["OPENCODE"] = "1";
+      });
+
+      it("isAgenticTui should return true", () => {
+        expect(isAgenticTui()).toBe(true);
+      });
+
+      it("whichAgenticTui should return opencode with high confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("opencode");
+        expect(result?.confidence).toBe("high");
+        expect(result?.signals).toContain("OPENCODE=1");
+      });
+
+      it("isSpecificAgenticTui('opencode') should return true", () => {
+        expect(isSpecificAgenticTui("opencode")).toBe(true);
+      });
+    });
+
+    describe("with OPENCODE set to non-1 value", () => {
+      beforeEach(() => {
+        process.env["OPENCODE"] = "true";
+      });
+
+      it("should not detect", () => {
+        expect(whichAgenticTui()?.tool).not.toBe("opencode");
       });
     });
   });

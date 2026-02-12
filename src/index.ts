@@ -353,7 +353,10 @@ const detectors: (() => DetectionResult | null)[] = [
 ];
 
 // Runtime guard: Copilot must precede Kiro (both use Q_TERM; see detector JSDoc).
-if (detectors.indexOf(detectGitHubCopilotCli) >= detectors.indexOf(detectKiroCli)) {
+// Only enforced when both detectors are present — removing one is safe.
+const copilotIdx = detectors.indexOf(detectGitHubCopilotCli);
+const kiroIdx = detectors.indexOf(detectKiroCli);
+if (copilotIdx !== -1 && kiroIdx !== -1 && copilotIdx >= kiroIdx) {
   throw new Error(
     "detectGitHubCopilotCli must appear before detectKiroCli in the detectors array. " +
     "Both tools set Q_TERM; see the JSDoc on each detector for details.",

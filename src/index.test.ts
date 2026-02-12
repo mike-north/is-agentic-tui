@@ -1,14 +1,18 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   isAgenticTui,
   whichAgenticTui,
   isSpecificAgenticTui,
 } from "./index.js";
+import * as processModule from "./process.js";
 
 describe("isAgenticTui", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
+    // Mock process tree walking to prevent real ancestors from triggering detection
+    vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([]);
+
     // Create a fresh copy of process.env for each test
     process.env = { ...originalEnv };
     // Clear all agentic TUI signals to prevent real env from leaking
@@ -31,6 +35,7 @@ describe("isAgenticTui", () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    vi.restoreAllMocks();
   });
 
   describe("when running outside any agentic TUI", () => {
@@ -70,6 +75,7 @@ describe("isAgenticTui", () => {
       expect(isSpecificAgenticTui("cline")).toBe(false);
       expect(isSpecificAgenticTui("kiro-cli")).toBe(false);
       expect(isSpecificAgenticTui("opencode")).toBe(false);
+      expect(isSpecificAgenticTui("github-copilot-cli")).toBe(false);
     });
   });
 
@@ -408,9 +414,14 @@ describe("isAgenticTui", () => {
       delete process.env["QTERM_SESSION_ID"];
     });
 
-    describe("with Q_TERM (high confidence)", () => {
+    describe("with Q_TERM and kiro-cli ancestor (high confidence)", () => {
       beforeEach(() => {
         process.env["Q_TERM"] = "1.24.1";
+        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
+          "node",
+          "kiro-cli",
+          "zsh",
+        ]);
       });
 
       it("isAgenticTui should return true", () => {
@@ -423,10 +434,44 @@ describe("isAgenticTui", () => {
         expect(result?.tool).toBe("kiro-cli");
         expect(result?.confidence).toBe("high");
         expect(result?.signals).toContain("Q_TERM=1.24.1");
+        expect(result?.signals).toContain("ancestor process: kiro-cli");
       });
 
       it("isSpecificAgenticTui('kiro-cli') should return true", () => {
         expect(isSpecificAgenticTui("kiro-cli")).toBe(true);
+      });
+    });
+
+    describe("with Q_TERM and q ancestor (high confidence)", () => {
+      beforeEach(() => {
+        process.env["Q_TERM"] = "1.24.1";
+        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
+          "node",
+          "q",
+          "zsh",
+        ]);
+      });
+
+      it("whichAgenticTui should return kiro-cli with high confidence", () => {
+        const result = whichAgenticTui();
+        expect(result?.tool).toBe("kiro-cli");
+        expect(result?.confidence).toBe("high");
+        expect(result?.signals).toContain("ancestor process: q");
+      });
+    });
+
+    describe("with Q_TERM but no recognized ancestor (medium confidence)", () => {
+      beforeEach(() => {
+        process.env["Q_TERM"] = "1.24.1";
+        // Process tree returns no matching ancestor (e.g. Windows or unknown tool)
+      });
+
+      it("whichAgenticTui should return kiro-cli with medium confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("kiro-cli");
+        expect(result?.confidence).toBe("medium");
+        expect(result?.signals).toContain("Q_TERM=1.24.1");
       });
     });
 
@@ -484,6 +529,120 @@ describe("isAgenticTui", () => {
 
       it("should not detect", () => {
         expect(whichAgenticTui()?.tool).not.toBe("opencode");
+      });
+    });
+  });
+
+  describe("GitHub Copilot CLI detection", () => {
+    beforeEach(() => {
+      delete process.env["CLAUDECODE"];
+      delete process.env["CURSOR_AGENT"];
+    });
+
+    describe("with copilot ancestor process (medium confidence)", () => {
+      beforeEach(() => {
+        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
+          "node",
+          "copilot",
+          "zsh",
+        ]);
+      });
+
+      it("isAgenticTui should return true", () => {
+        expect(isAgenticTui()).toBe(true);
+      });
+
+      it("whichAgenticTui should return github-copilot-cli with medium confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("github-copilot-cli");
+        expect(result?.confidence).toBe("medium");
+        expect(result?.signals).toContain("ancestor process: copilot");
+      });
+
+      it("isSpecificAgenticTui('github-copilot-cli') should return true", () => {
+        expect(isSpecificAgenticTui("github-copilot-cli")).toBe(true);
+      });
+    });
+
+    describe("with copilot ancestor and Q_TERM (high confidence)", () => {
+      beforeEach(() => {
+        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
+          "node",
+          "copilot",
+          "zsh",
+        ]);
+        process.env["Q_TERM"] = "1.0.0";
+      });
+
+      it("whichAgenticTui should return github-copilot-cli with high confidence", () => {
+        const result = whichAgenticTui();
+        expect(result).not.toBeNull();
+        expect(result?.tool).toBe("github-copilot-cli");
+        expect(result?.confidence).toBe("high");
+        expect(result?.signals).toContain("ancestor process: copilot");
+        expect(result?.signals).toContain("Q_TERM=1.0.0");
+      });
+
+      it("should not misidentify as kiro-cli despite Q_TERM being set", () => {
+        expect(isSpecificAgenticTui("kiro-cli")).toBe(false);
+      });
+    });
+
+    describe("with full path copilot ancestor", () => {
+      beforeEach(() => {
+        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
+          "node",
+          "/usr/local/bin/copilot",
+          "zsh",
+        ]);
+      });
+
+      it("whichAgenticTui should detect copilot from full path", () => {
+        const result = whichAgenticTui();
+        expect(result?.tool).toBe("github-copilot-cli");
+        expect(result?.signals).toContain(
+          "ancestor process: /usr/local/bin/copilot",
+        );
+      });
+    });
+
+    describe("without copilot ancestor process", () => {
+      beforeEach(() => {
+        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
+          "node",
+          "zsh",
+        ]);
+      });
+
+      it("should not detect github-copilot-cli", () => {
+        const result = whichAgenticTui();
+        expect(result?.tool).not.toBe("github-copilot-cli");
+      });
+    });
+
+    describe("when process tree walking returns empty", () => {
+      beforeEach(() => {
+        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([]);
+      });
+
+      it("should not detect github-copilot-cli", () => {
+        const result = whichAgenticTui();
+        expect(result?.tool).not.toBe("github-copilot-cli");
+      });
+    });
+
+    describe("with process name similar to but not matching copilot", () => {
+      beforeEach(() => {
+        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
+          "copilot-wrapper",
+          "not-copilot",
+          "mycopilot",
+        ]);
+      });
+
+      it("should not detect github-copilot-cli", () => {
+        expect(whichAgenticTui()?.tool).not.toBe("github-copilot-cli");
       });
     });
   });

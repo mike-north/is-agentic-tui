@@ -5,7 +5,7 @@
 ```ts
 
 // @public
-export type AgenticTui = "claude-code" | "cursor-agent" | "gemini-cli" | "aider" | "codex" | "cline" | "kiro-cli" | "opencode" | "unknown";
+export type AgenticTui = "claude-code" | "cursor-agent" | "gemini-cli" | "aider" | "codex" | "cline" | "kiro-cli" | "opencode" | "github-copilot-cli" | "unknown";
 
 // @public
 export interface DetectionResult {

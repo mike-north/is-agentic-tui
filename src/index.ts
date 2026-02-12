@@ -1,3 +1,5 @@
+import { getAncestorProcessNames } from "./process.js";
+
 /**
  * Detects whether code is running inside an agentic TUI application.
  */
@@ -11,6 +13,7 @@ export type AgenticTui =
   | "cline"
   | "kiro-cli"
   | "opencode"
+  | "github-copilot-cli"
   | "unknown";
 
 /**
@@ -209,23 +212,55 @@ function detectCline(): DetectionResult | null {
  *
  * Kiro CLI sets Q_TERM to a version string (e.g. "1.24.1").
  * QTERM_SESSION_ID is also present as a UUID.
+ *
+ * **Q_TERM is not unique to Kiro.** GitHub Copilot CLI (and potentially
+ * future tools) also sets Q_TERM. To avoid false positives, when Q_TERM is
+ * present we verify that a `kiro-cli` (or `q`) ancestor exists in the
+ * process tree. If the ancestor check fails (e.g. on Windows, or if the
+ * process tree is unreadable) we fall back to medium confidence on the env
+ * var alone — this preserves detection on platforms where `ps` isn't
+ * available.
+ *
+ * If `detectGitHubCopilotCli` already matched (it runs earlier in the
+ * detector array), this function won't affect the result because
+ * `whichAgenticTui()` returns the first high-confidence match. But this
+ * ancestor check is still valuable as a defense-in-depth guard against
+ * future Q_TERM-setting tools that may be inserted after Copilot in the
+ * detector array.
  */
 function detectKiroCli(): DetectionResult | null {
-  // Primary signal: Q_TERM exists
-  if (process.env["Q_TERM"] !== undefined) {
-    return {
-      tool: "kiro-cli",
-      confidence: "high",
-      signals: [`Q_TERM=${process.env["Q_TERM"]}`],
-    };
+  const qTerm = process.env["Q_TERM"];
+  if (qTerm !== undefined) {
+    const signals = [`Q_TERM=${qTerm}`];
+
+    // Verify via process tree to disambiguate from other Q_TERM-setting tools.
+    const ancestors = getAncestorProcessNames();
+    const kiroAncestor = ancestors.find(
+      (name) =>
+        name === "kiro-cli" ||
+        name.endsWith("/kiro-cli") ||
+        name === "q" ||
+        name.endsWith("/q"),
+    );
+
+    if (kiroAncestor) {
+      signals.push(`ancestor process: ${kiroAncestor}`);
+      return { tool: "kiro-cli", confidence: "high", signals };
+    }
+
+    // No ancestor found — could be a platform where ps isn't available,
+    // or the process tree is unreadable. Fall back to medium confidence
+    // on the env var alone.
+    return { tool: "kiro-cli", confidence: "medium", signals };
   }
 
   // Secondary signal: QTERM_SESSION_ID exists
-  if (process.env["QTERM_SESSION_ID"] !== undefined) {
+  const sessionId = process.env["QTERM_SESSION_ID"];
+  if (sessionId !== undefined) {
     return {
       tool: "kiro-cli",
       confidence: "medium",
-      signals: [`QTERM_SESSION_ID=${process.env["QTERM_SESSION_ID"]}`],
+      signals: [`QTERM_SESSION_ID=${sessionId}`],
     };
   }
 
@@ -250,6 +285,55 @@ function detectOpencode(): DetectionResult | null {
   return null;
 }
 
+/**
+ * Detects GitHub Copilot CLI.
+ *
+ * Copilot CLI does not set any unique environment variables in subprocesses.
+ * Detection relies on walking the process tree to find a `copilot` ancestor.
+ *
+ * **Q_TERM disambiguation:** Copilot CLI sets Q_TERM in its subprocess
+ * environment — the same variable that Kiro CLI sets. Q_TERM alone cannot
+ * distinguish between the two tools. The `copilot` ancestor process name is
+ * the only differentiator we have today. When both signals are present
+ * (ancestor process + Q_TERM) we return high confidence; with only the
+ * ancestor process we return medium.
+ *
+ * **IMPORTANT — detector ordering:** This detector MUST run before
+ * `detectKiroCli` in the `detectors` array. Because `whichAgenticTui()`
+ * picks the first high-confidence match, running Copilot first ensures that
+ * a `copilot` ancestor + Q_TERM is attributed to Copilot (high), not Kiro.
+ * If a *third* tool starts setting Q_TERM and has its own distinct ancestor
+ * process name, it should follow the same pattern: add a process-tree
+ * detector before Kiro, and treat Q_TERM as a corroborating (not primary)
+ * signal.
+ */
+function detectGitHubCopilotCli(): DetectionResult | null {
+  const ancestors = getAncestorProcessNames();
+  const copilotAncestor = ancestors.find(
+    (name) => name === "copilot" || name.endsWith("/copilot"),
+  );
+
+  if (copilotAncestor) {
+    const signals = [`ancestor process: ${copilotAncestor}`];
+
+    // Q_TERM is shared with Kiro CLI (and potentially future tools).
+    // It corroborates the process-tree signal but must not be used as
+    // the sole discriminator — see the JSDoc above for ordering rules.
+    const qTerm = process.env["Q_TERM"];
+    if (qTerm !== undefined) {
+      signals.push(`Q_TERM=${qTerm}`);
+    }
+
+    return {
+      tool: "github-copilot-cli",
+      confidence: qTerm !== undefined ? "high" : "medium",
+      signals,
+    };
+  }
+
+  return null;
+}
+
 // All detector functions
 const detectors: (() => DetectionResult | null)[] = [
   detectClaudeCode,
@@ -258,9 +342,23 @@ const detectors: (() => DetectionResult | null)[] = [
   detectAider,
   detectCodex,
   detectCline,
+  // ⚠️ ORDER MATTERS: Copilot CLI must run before Kiro CLI.
+  // Both tools set Q_TERM. Copilot is disambiguated by its ancestor process
+  // name ("copilot"). If Copilot matched, Kiro won't run (first high-confidence
+  // match wins). If no copilot ancestor is found, Kiro's Q_TERM check proceeds
+  // as normal. See detectGitHubCopilotCli JSDoc for the full rationale.
+  detectGitHubCopilotCli,
   detectKiroCli,
   detectOpencode,
 ];
+
+// Runtime guard: Copilot must precede Kiro (both use Q_TERM; see detector JSDoc).
+if (detectors.indexOf(detectGitHubCopilotCli) >= detectors.indexOf(detectKiroCli)) {
+  throw new Error(
+    "detectGitHubCopilotCli must appear before detectKiroCli in the detectors array. " +
+    "Both tools set Q_TERM; see the JSDoc on each detector for details.",
+  );
+}
 
 /**
  * Checks if code is running inside any agentic TUI application.

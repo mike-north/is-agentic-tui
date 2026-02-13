@@ -17,12 +17,12 @@
   "messages": {
     "compilerMessageReporting": {
       "default": {
-        "logLevel": "warning"
+        "logLevel": "error"
       }
     },
     "extractorMessageReporting": {
       "default": {
-        "logLevel": "warning"
+        "logLevel": "error"
       },
       "ae-missing-release-tag": {
         "logLevel": "none"
@@ -30,7 +30,7 @@
     },
     "tsdocMessageReporting": {
       "default": {
-        "logLevel": "warning"
+        "logLevel": "error"
       }
     }
   }

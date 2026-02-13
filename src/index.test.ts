@@ -3,6 +3,7 @@ import {
   isAgenticTui,
   whichAgenticTui,
   isSpecificAgenticTui,
+  clearCache,
 } from "./index.js";
 import * as processModule from "./process.js";
 
@@ -10,6 +11,9 @@ describe("isAgenticTui", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
+    // Clear cached detection results
+    clearCache();
+
     // Mock process tree walking to prevent real ancestors from triggering detection
     vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([]);
 
@@ -539,8 +543,9 @@ describe("isAgenticTui", () => {
       delete process.env["CURSOR_AGENT"];
     });
 
-    describe("with copilot ancestor process (medium confidence)", () => {
+    describe("with copilot ancestor and Q_TERM (high confidence)", () => {
       beforeEach(() => {
+        process.env["Q_TERM"] = "1.0.0";
         vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
           "node",
           "copilot",
@@ -552,29 +557,6 @@ describe("isAgenticTui", () => {
         expect(isAgenticTui()).toBe(true);
       });
 
-      it("whichAgenticTui should return github-copilot-cli with medium confidence", () => {
-        const result = whichAgenticTui();
-        expect(result).not.toBeNull();
-        expect(result?.tool).toBe("github-copilot-cli");
-        expect(result?.confidence).toBe("medium");
-        expect(result?.signals).toContain("ancestor process: copilot");
-      });
-
-      it("isSpecificAgenticTui('github-copilot-cli') should return true", () => {
-        expect(isSpecificAgenticTui("github-copilot-cli")).toBe(true);
-      });
-    });
-
-    describe("with copilot ancestor and Q_TERM (high confidence)", () => {
-      beforeEach(() => {
-        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
-          "node",
-          "copilot",
-          "zsh",
-        ]);
-        process.env["Q_TERM"] = "1.0.0";
-      });
-
       it("whichAgenticTui should return github-copilot-cli with high confidence", () => {
         const result = whichAgenticTui();
         expect(result).not.toBeNull();
@@ -584,13 +566,18 @@ describe("isAgenticTui", () => {
         expect(result?.signals).toContain("Q_TERM=1.0.0");
       });
 
+      it("isSpecificAgenticTui('github-copilot-cli') should return true", () => {
+        expect(isSpecificAgenticTui("github-copilot-cli")).toBe(true);
+      });
+
       it("should not misidentify as kiro-cli despite Q_TERM being set", () => {
         expect(isSpecificAgenticTui("kiro-cli")).toBe(false);
       });
     });
 
-    describe("with full path copilot ancestor", () => {
+    describe("with full path copilot ancestor and Q_TERM", () => {
       beforeEach(() => {
+        process.env["Q_TERM"] = "1.0.0";
         vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
           "node",
           "/usr/local/bin/copilot",
@@ -607,8 +594,30 @@ describe("isAgenticTui", () => {
       });
     });
 
-    describe("without copilot ancestor process", () => {
+    describe("without Q_TERM set", () => {
       beforeEach(() => {
+        delete process.env["Q_TERM"];
+        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
+          "node",
+          "copilot",
+          "zsh",
+        ]);
+      });
+
+      it("should not detect github-copilot-cli (process tree not walked)", () => {
+        const result = whichAgenticTui();
+        expect(result?.tool).not.toBe("github-copilot-cli");
+      });
+
+      it("should not call getAncestorProcessNames", () => {
+        whichAgenticTui();
+        expect(processModule.getAncestorProcessNames).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("with Q_TERM but no copilot ancestor", () => {
+      beforeEach(() => {
+        process.env["Q_TERM"] = "1.0.0";
         vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
           "node",
           "zsh",
@@ -621,19 +630,9 @@ describe("isAgenticTui", () => {
       });
     });
 
-    describe("when process tree walking returns empty", () => {
+    describe("with Q_TERM and process name similar to but not matching copilot", () => {
       beforeEach(() => {
-        vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([]);
-      });
-
-      it("should not detect github-copilot-cli", () => {
-        const result = whichAgenticTui();
-        expect(result?.tool).not.toBe("github-copilot-cli");
-      });
-    });
-
-    describe("with process name similar to but not matching copilot", () => {
-      beforeEach(() => {
+        process.env["Q_TERM"] = "1.0.0";
         vi.spyOn(processModule, "getAncestorProcessNames").mockReturnValue([
           "copilot-wrapper",
           "not-copilot",
@@ -677,6 +676,102 @@ describe("isAgenticTui", () => {
         expect(result?.tool).toBe("claude-code");
         expect(result?.confidence).toBe("medium");
       });
+    });
+  });
+
+  describe("caching behavior", () => {
+    it("should cache detection results", () => {
+      process.env["CLAUDECODE"] = "1";
+      const result1 = whichAgenticTui();
+      expect(result1?.tool).toBe("claude-code");
+
+      // Change environment - but cache should return old result
+      delete process.env["CLAUDECODE"];
+      process.env["CURSOR_AGENT"] = "1";
+      const result2 = whichAgenticTui();
+      expect(result2?.tool).toBe("claude-code"); // Still cached
+    });
+
+    it("should return fresh result when force: true", () => {
+      process.env["CLAUDECODE"] = "1";
+      const result1 = whichAgenticTui();
+      expect(result1?.tool).toBe("claude-code");
+
+      // Change environment and force refresh
+      delete process.env["CLAUDECODE"];
+      process.env["CURSOR_AGENT"] = "1";
+      const result2 = whichAgenticTui({ force: true });
+      expect(result2?.tool).toBe("cursor-agent"); // Fresh result
+    });
+
+    it("should update cache after force refresh", () => {
+      process.env["CLAUDECODE"] = "1";
+      whichAgenticTui();
+
+      // Force refresh with new environment
+      delete process.env["CLAUDECODE"];
+      process.env["CURSOR_AGENT"] = "1";
+      whichAgenticTui({ force: true });
+
+      // Subsequent call without force should return new cached result
+      const result = whichAgenticTui();
+      expect(result?.tool).toBe("cursor-agent");
+    });
+
+    it("should cache null results", () => {
+      // No agentic TUI signals
+      const result1 = whichAgenticTui();
+      expect(result1).toBeNull();
+
+      // Add signal - but cache should return null
+      process.env["CLAUDECODE"] = "1";
+      const result2 = whichAgenticTui();
+      expect(result2).toBeNull(); // Still cached null
+    });
+
+    it("should refresh null cache when force: true", () => {
+      // No agentic TUI signals
+      const result1 = whichAgenticTui();
+      expect(result1).toBeNull();
+
+      // Add signal and force refresh
+      process.env["CLAUDECODE"] = "1";
+      const result2 = whichAgenticTui({ force: true });
+      expect(result2?.tool).toBe("claude-code");
+    });
+
+    it("isAgenticTui should respect force option", () => {
+      process.env["CLAUDECODE"] = "1";
+      expect(isAgenticTui()).toBe(true);
+
+      delete process.env["CLAUDECODE"];
+      expect(isAgenticTui()).toBe(true); // Cached
+      expect(isAgenticTui({ force: true })).toBe(false); // Fresh
+    });
+
+    it("isSpecificAgenticTui should respect force option", () => {
+      process.env["CLAUDECODE"] = "1";
+      expect(isSpecificAgenticTui("claude-code")).toBe(true);
+
+      delete process.env["CLAUDECODE"];
+      process.env["CURSOR_AGENT"] = "1";
+      expect(isSpecificAgenticTui("claude-code")).toBe(true); // Cached
+      expect(isSpecificAgenticTui("claude-code", { force: true })).toBe(false); // Fresh
+      expect(isSpecificAgenticTui("cursor-agent")).toBe(true); // Now cached as cursor
+    });
+
+    it("clearCache should reset detection state", () => {
+      process.env["CLAUDECODE"] = "1";
+      const result1 = whichAgenticTui();
+      expect(result1?.tool).toBe("claude-code");
+
+      delete process.env["CLAUDECODE"];
+      process.env["CURSOR_AGENT"] = "1";
+
+      // Without clearCache, would return cached claude-code
+      clearCache();
+      const result2 = whichAgenticTui();
+      expect(result2?.tool).toBe("cursor-agent");
     });
   });
 });

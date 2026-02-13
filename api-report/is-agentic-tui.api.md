@@ -4,8 +4,16 @@
 
 ```ts
 
-// @public
+// @public (undocumented)
 export type AgenticTui = "claude-code" | "cursor-agent" | "gemini-cli" | "aider" | "codex" | "cline" | "kiro-cli" | "opencode" | "github-copilot-cli" | "unknown";
+
+// @public
+export function clearCache(): void;
+
+// @public
+export interface DetectionOptions {
+    force?: boolean;
+}
 
 // @public
 export interface DetectionResult {
@@ -15,13 +23,13 @@ export interface DetectionResult {
 }
 
 // @public
-export function isAgenticTui(): boolean;
+export function isAgenticTui(options?: DetectionOptions): boolean;
 
 // @public
-export function isSpecificAgenticTui(tool: AgenticTui): boolean;
+export function isSpecificAgenticTui(tool: AgenticTui, options?: DetectionOptions): boolean;
 
 // @public
-export function whichAgenticTui(): DetectionResult | null;
+export function whichAgenticTui(options?: DetectionOptions): DetectionResult | null;
 
 // (No @packageDocumentation comment for this package)
 

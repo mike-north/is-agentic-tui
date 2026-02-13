@@ -4,6 +4,30 @@ import { getAncestorProcessNames } from "./process.js";
  * Detects whether code is running inside an agentic TUI application.
  */
 
+/**
+ * Options for detection functions.
+ */
+export interface DetectionOptions {
+  /**
+   * Force a fresh evaluation, bypassing the cache.
+   * The new result will become the cached value.
+   * Defaults to `false`.
+   */
+  force?: boolean;
+}
+
+// Module-level cache for detection results.
+// undefined = not yet computed, null = computed but no agentic TUI detected
+let cachedResult: DetectionResult | null | undefined;
+
+/**
+ * Clears the cached detection result.
+ * Primarily useful for testing.
+ */
+export function clearCache(): void {
+  cachedResult = undefined;
+}
+
 export type AgenticTui =
   | "claude-code"
   | "cursor-agent"
@@ -288,15 +312,16 @@ function detectOpencode(): DetectionResult | null {
 /**
  * Detects GitHub Copilot CLI.
  *
- * Copilot CLI does not set any unique environment variables in subprocesses.
- * Detection relies on walking the process tree to find a `copilot` ancestor.
+ * Copilot CLI sets Q_TERM in its subprocess environment — the same variable
+ * that Kiro CLI sets. Q_TERM alone cannot distinguish between the two tools.
+ * The `copilot` ancestor process name is the only differentiator we have today.
  *
- * **Q_TERM disambiguation:** Copilot CLI sets Q_TERM in its subprocess
- * environment — the same variable that Kiro CLI sets. Q_TERM alone cannot
- * distinguish between the two tools. The `copilot` ancestor process name is
- * the only differentiator we have today. When both signals are present
- * (ancestor process + Q_TERM) we return high confidence; with only the
- * ancestor process we return medium.
+ * **Performance optimization:** Process tree walking is expensive (spawns `ps`
+ * commands). We only walk the tree when Q_TERM is set, as this is a strong
+ * signal that we might be in a Q_TERM-based tool.
+ *
+ * When both signals are present (ancestor process + Q_TERM) we return high
+ * confidence.
  *
  * **IMPORTANT — detector ordering:** This detector MUST run before
  * `detectKiroCli` in the `detectors` array. Because `whichAgenticTui()`
@@ -308,26 +333,22 @@ function detectOpencode(): DetectionResult | null {
  * signal.
  */
 function detectGitHubCopilotCli(): DetectionResult | null {
+  // Only walk the process tree if Q_TERM is set (performance optimization).
+  const qTerm = process.env["Q_TERM"];
+  if (qTerm === undefined) {
+    return null;
+  }
+
   const ancestors = getAncestorProcessNames();
   const copilotAncestor = ancestors.find(
     (name) => name === "copilot" || name.endsWith("/copilot"),
   );
 
   if (copilotAncestor) {
-    const signals = [`ancestor process: ${copilotAncestor}`];
-
-    // Q_TERM is shared with Kiro CLI (and potentially future tools).
-    // It corroborates the process-tree signal but must not be used as
-    // the sole discriminator — see the JSDoc above for ordering rules.
-    const qTerm = process.env["Q_TERM"];
-    if (qTerm !== undefined) {
-      signals.push(`Q_TERM=${qTerm}`);
-    }
-
     return {
       tool: "github-copilot-cli",
-      confidence: qTerm !== undefined ? "high" : "medium",
-      signals,
+      confidence: "high",
+      signals: [`ancestor process: ${copilotAncestor}`, `Q_TERM=${qTerm}`],
     };
   }
 
@@ -366,6 +387,10 @@ if (copilotIdx !== -1 && kiroIdx !== -1 && copilotIdx >= kiroIdx) {
 /**
  * Checks if code is running inside any agentic TUI application.
  *
+ * Results are cached at module level. Subsequent calls return the cached
+ * result unless `force: true` is passed.
+ *
+ * @param options - Detection options. Pass `{ force: true }` to bypass cache.
  * @returns true if running inside an agentic TUI, false otherwise
  *
  * @example
@@ -375,15 +400,24 @@ if (copilotIdx !== -1 && kiroIdx !== -1 && copilotIdx >= kiroIdx) {
  * if (isAgenticTui()) {
  *   console.log('Running inside an agentic TUI');
  * }
+ *
+ * // Force a fresh evaluation
+ * if (isAgenticTui({ force: true })) {
+ *   console.log('Fresh check: running inside an agentic TUI');
+ * }
  * ```
  */
-export function isAgenticTui(): boolean {
-  return detectors.some((detect) => detect() !== null);
+export function isAgenticTui(options?: DetectionOptions): boolean {
+  return whichAgenticTui(options) !== null;
 }
 
 /**
  * Identifies which agentic TUI application is running, if any.
  *
+ * Results are cached at module level. Subsequent calls return the cached
+ * result unless `force: true` is passed.
+ *
+ * @param options - Detection options. Pass `{ force: true }` to bypass cache.
  * @returns Detection result with tool name and confidence, or null if not in an agentic TUI
  *
  * @example
@@ -395,32 +429,49 @@ export function isAgenticTui(): boolean {
  *   console.log(`Running in ${result.tool} (confidence: ${result.confidence})`);
  *   console.log(`Detected via: ${result.signals.join(', ')}`);
  * }
+ *
+ * // Force a fresh evaluation
+ * const freshResult = whichAgenticTui({ force: true });
  * ```
  */
-export function whichAgenticTui(): DetectionResult | null {
-  // Return the first high-confidence match
+export function whichAgenticTui(options?: DetectionOptions): DetectionResult | null {
+  // Return cached result if available and not forcing refresh
+  if (cachedResult !== undefined && !options?.force) {
+    return cachedResult;
+  }
+
+  // Perform fresh detection in a single pass
+  let highConfidence: DetectionResult | null = null;
+  let mediumConfidence: DetectionResult | null = null;
+
   for (const detect of detectors) {
-    const result = detect();
-    if (result?.confidence === "high") {
-      return result;
+    const detected = detect();
+    if (detected?.confidence === "high") {
+      highConfidence = detected;
+      break; // Early exit - high confidence is best possible
+    }
+    if (detected !== null && mediumConfidence === null) {
+      mediumConfidence = detected; // Keep first medium match as fallback
     }
   }
 
-  // Fall back to first medium-confidence match
-  for (const detect of detectors) {
-    const result = detect();
-    if (result !== null) {
-      return result;
-    }
-  }
+  // Prefer high confidence, fall back to medium
+  const result = highConfidence ?? mediumConfidence;
 
-  return null;
+  // Cache the result (including null for "no detection")
+  cachedResult = result;
+
+  return result;
 }
 
 /**
  * Checks if code is running inside a specific agentic TUI.
  *
+ * Results are cached at module level. Subsequent calls return the cached
+ * result unless `force: true` is passed.
+ *
  * @param tool - The tool to check for
+ * @param options - Detection options. Pass `{ force: true }` to bypass cache.
  * @returns true if running inside the specified tool, false otherwise
  *
  * @example
@@ -430,9 +481,14 @@ export function whichAgenticTui(): DetectionResult | null {
  * if (isSpecificAgenticTui('claude-code')) {
  *   console.log('Running inside Claude Code');
  * }
+ *
+ * // Force a fresh evaluation
+ * if (isSpecificAgenticTui('claude-code', { force: true })) {
+ *   console.log('Fresh check: running inside Claude Code');
+ * }
  * ```
  */
-export function isSpecificAgenticTui(tool: AgenticTui): boolean {
-  const result = whichAgenticTui();
+export function isSpecificAgenticTui(tool: AgenticTui, options?: DetectionOptions): boolean {
+  const result = whichAgenticTui(options);
   return result?.tool === tool;
 }

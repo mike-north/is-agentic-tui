@@ -6,10 +6,12 @@
 
 Checks if code is running inside a specific agentic TUI.
 
+Results are cached at module level. Subsequent calls return the cached result unless `force: true` is passed.
+
 **Signature:**
 
 ```typescript
-declare function isSpecificAgenticTui(tool: AgenticTui): boolean;
+declare function isSpecificAgenticTui(tool: AgenticTui, options?: DetectionOptions): boolean;
 ```
 
 ## Parameters
@@ -46,6 +48,22 @@ The tool to check for
 
 
 </td></tr>
+<tr><td>
+
+options
+
+
+</td><td>
+
+[DetectionOptions](./is-agentic-tui.detectionoptions.md)
+
+
+</td><td>
+
+_(Optional)_ Detection options. Pass `{ force: true }` to bypass cache.
+
+
+</td></tr>
 </tbody></table>
 
 **Returns:**
@@ -62,6 +80,11 @@ import { isSpecificAgenticTui } from 'is-agentic-tui';
 
 if (isSpecificAgenticTui('claude-code')) {
   console.log('Running inside Claude Code');
+}
+
+// Force a fresh evaluation
+if (isSpecificAgenticTui('claude-code', { force: true })) {
+  console.log('Fresh check: running inside Claude Code');
 }
 ```
 

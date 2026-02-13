@@ -6,11 +6,50 @@
 
 Identifies which agentic TUI application is running, if any.
 
+Results are cached at module level. Subsequent calls return the cached result unless `force: true` is passed.
+
 **Signature:**
 
 ```typescript
-declare function whichAgenticTui(): DetectionResult | null;
+declare function whichAgenticTui(options?: DetectionOptions): DetectionResult | null;
 ```
+
+## Parameters
+
+<table><thead><tr><th>
+
+Parameter
+
+
+</th><th>
+
+Type
+
+
+</th><th>
+
+Description
+
+
+</th></tr></thead>
+<tbody><tr><td>
+
+options
+
+
+</td><td>
+
+[DetectionOptions](./is-agentic-tui.detectionoptions.md)
+
+
+</td><td>
+
+_(Optional)_ Detection options. Pass `{ force: true }` to bypass cache.
+
+
+</td></tr>
+</tbody></table>
+
 **Returns:**
 
 [DetectionResult](./is-agentic-tui.detectionresult.md) \| null
@@ -28,5 +67,8 @@ if (result) {
   console.log(`Running in ${result.tool} (confidence: ${result.confidence})`);
   console.log(`Detected via: ${result.signals.join(', ')}`);
 }
+
+// Force a fresh evaluation
+const freshResult = whichAgenticTui({ force: true });
 ```
 

@@ -19,34 +19,51 @@ Description
 </th></tr></thead>
 <tbody><tr><td>
 
-[isAgenticTui()](./is-agentic-tui.isagentictui.md)
+[clearCache()](./is-agentic-tui.clearcache.md)
+
+
+</td><td>
+
+Clears the cached detection result. Primarily useful for testing.
+
+
+</td></tr>
+<tr><td>
+
+[isAgenticTui(options)](./is-agentic-tui.isagentictui.md)
 
 
 </td><td>
 
 Checks if code is running inside any agentic TUI application.
 
+Results are cached at module level. Subsequent calls return the cached result unless `force: true` is passed.
+
 
 </td></tr>
 <tr><td>
 
-[isSpecificAgenticTui(tool)](./is-agentic-tui.isspecificagentictui.md)
+[isSpecificAgenticTui(tool, options)](./is-agentic-tui.isspecificagentictui.md)
 
 
 </td><td>
 
 Checks if code is running inside a specific agentic TUI.
 
+Results are cached at module level. Subsequent calls return the cached result unless `force: true` is passed.
+
 
 </td></tr>
 <tr><td>
 
-[whichAgenticTui()](./is-agentic-tui.whichagentictui.md)
+[whichAgenticTui(options)](./is-agentic-tui.whichagentictui.md)
 
 
 </td><td>
 
 Identifies which agentic TUI application is running, if any.
+
+Results are cached at module level. Subsequent calls return the cached result unless `force: true` is passed.
 
 
 </td></tr>
@@ -66,6 +83,17 @@ Description
 
 </th></tr></thead>
 <tbody><tr><td>
+
+[DetectionOptions](./is-agentic-tui.detectionoptions.md)
+
+
+</td><td>
+
+Options for detection functions.
+
+
+</td></tr>
+<tr><td>
 
 [DetectionResult](./is-agentic-tui.detectionresult.md)
 
@@ -97,8 +125,6 @@ Description
 
 
 </td><td>
-
-Detects whether code is running inside an agentic TUI application.
 
 
 </td></tr>

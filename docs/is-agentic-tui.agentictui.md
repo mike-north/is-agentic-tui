@@ -4,8 +4,6 @@
 
 ## AgenticTui type
 
-Detects whether code is running inside an agentic TUI application.
-
 **Signature:**
 
 ```typescript

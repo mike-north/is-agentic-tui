@@ -11,7 +11,7 @@ export interface DetectionOptions {
   /**
    * Force a fresh evaluation, bypassing the cache.
    * The new result will become the cached value.
-   * @default false
+   * Defaults to `false`.
    */
   force?: boolean;
 }
@@ -390,8 +390,7 @@ if (copilotIdx !== -1 && kiroIdx !== -1 && copilotIdx >= kiroIdx) {
  * Results are cached at module level. Subsequent calls return the cached
  * result unless `force: true` is passed.
  *
- * @param options - Detection options
- * @param options.force - Force a fresh evaluation, bypassing the cache
+ * @param options - Detection options. Pass `{ force: true }` to bypass cache.
  * @returns true if running inside an agentic TUI, false otherwise
  *
  * @example
@@ -418,8 +417,7 @@ export function isAgenticTui(options?: DetectionOptions): boolean {
  * Results are cached at module level. Subsequent calls return the cached
  * result unless `force: true` is passed.
  *
- * @param options - Detection options
- * @param options.force - Force a fresh evaluation, bypassing the cache
+ * @param options - Detection options. Pass `{ force: true }` to bypass cache.
  * @returns Detection result with tool name and confidence, or null if not in an agentic TUI
  *
  * @example
@@ -478,8 +476,7 @@ export function whichAgenticTui(options?: DetectionOptions): DetectionResult | n
  * result unless `force: true` is passed.
  *
  * @param tool - The tool to check for
- * @param options - Detection options
- * @param options.force - Force a fresh evaluation, bypassing the cache
+ * @param options - Detection options. Pass `{ force: true }` to bypass cache.
  * @returns true if running inside the specified tool, false otherwise
  *
  * @example

@@ -6,11 +6,50 @@
 
 Checks if code is running inside any agentic TUI application.
 
+Results are cached at module level. Subsequent calls return the cached result unless `force: true` is passed.
+
 **Signature:**
 
 ```typescript
-declare function isAgenticTui(): boolean;
+declare function isAgenticTui(options?: DetectionOptions): boolean;
 ```
+
+## Parameters
+
+<table><thead><tr><th>
+
+Parameter
+
+
+</th><th>
+
+Type
+
+
+</th><th>
+
+Description
+
+
+</th></tr></thead>
+<tbody><tr><td>
+
+options
+
+
+</td><td>
+
+[DetectionOptions](./is-agentic-tui.detectionoptions.md)
+
+
+</td><td>
+
+_(Optional)_ Detection options. Pass `{ force: true }` to bypass cache.
+
+
+</td></tr>
+</tbody></table>
+
 **Returns:**
 
 boolean
@@ -25,6 +64,11 @@ import { isAgenticTui } from 'is-agentic-tui';
 
 if (isAgenticTui()) {
   console.log('Running inside an agentic TUI');
+}
+
+// Force a fresh evaluation
+if (isAgenticTui({ force: true })) {
+  console.log('Fresh check: running inside an agentic TUI');
 }
 ```
 

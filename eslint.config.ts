@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import eslint from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import tseslint from "typescript-eslint";
+import apiExtractorPlugin from "@api-extractor-tools/eslint-plugin";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -11,6 +12,7 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
+  apiExtractorPlugin.configs.recommended,
   {
     languageOptions: {
       parserOptions: {

@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@api-extractor-tools/eslint-plugin':
+        specifier: 0.1.0-alpha.2
+        version: 0.1.0-alpha.2(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)
       '@changesets/cli':
         specifier: ^2.29.8
         version: 2.29.8(@types/node@18.19.130)
@@ -55,6 +58,12 @@ importers:
         version: 3.2.4(@types/node@18.19.130)(jiti@2.6.1)
 
 packages:
+
+  '@api-extractor-tools/eslint-plugin@0.1.0-alpha.2':
+    resolution: {integrity: sha512-AhNERi0AeRIgZ2srMCymxFusICWpow++quxUizNE4M4YGAK0kETMaW1PSPFkIGTljMrGvgxO1hxTocRF3gmJBQ==}
+    peerDependencies:
+      eslint: '>=8.0.0'
+      typescript: '>=5.5.0'
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -391,6 +400,9 @@ packages:
 
   '@microsoft/tsdoc-config@0.18.0':
     resolution: {integrity: sha512-8N/vClYyfOH+l4fLkkr9+myAoR6M7akc8ntBJ4DJdWH2b09uVfr71+LTMpNyG19fNqWDg8KEDZhx5wxuqHyGjw==}
+
+  '@microsoft/tsdoc@0.15.1':
+    resolution: {integrity: sha512-4aErSrCR/On/e5G2hDP0wjooqDdauzEbIq8hIkIe5pXV0rtWJZvdCEKL0ykZxex+IxIwBp0eGeV48hQN07dXtw==}
 
   '@microsoft/tsdoc@0.16.0':
     resolution: {integrity: sha512-xgAyonlVVS+q7Vc7qLW0UrJU7rSFcETRWsqdXZtjzRU8dF+6CkozTK4V4y1LwOX7j8r/vHphjDeMeGI4tNGeGA==}
@@ -2003,6 +2015,12 @@ packages:
 
 snapshots:
 
+  '@api-extractor-tools/eslint-plugin@0.1.0-alpha.2(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)':
+    dependencies:
+      '@microsoft/tsdoc': 0.15.1
+      eslint: 9.39.2(jiti@2.6.1)
+      typescript: 5.9.3
+
   '@babel/code-frame@7.29.0':
     dependencies:
       '@babel/helper-validator-identifier': 7.28.5
@@ -2396,6 +2414,8 @@ snapshots:
       ajv: 8.12.0
       jju: 1.4.0
       resolve: 1.22.11
+
+  '@microsoft/tsdoc@0.15.1': {}
 
   '@microsoft/tsdoc@0.16.0': {}
 

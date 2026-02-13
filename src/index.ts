@@ -440,28 +440,23 @@ export function whichAgenticTui(options?: DetectionOptions): DetectionResult | n
     return cachedResult;
   }
 
-  // Perform fresh detection
-  let result: DetectionResult | null = null;
+  // Perform fresh detection in a single pass
+  let highConfidence: DetectionResult | null = null;
+  let mediumConfidence: DetectionResult | null = null;
 
-  // Return the first high-confidence match
   for (const detect of detectors) {
     const detected = detect();
     if (detected?.confidence === "high") {
-      result = detected;
-      break;
+      highConfidence = detected;
+      break; // Early exit - high confidence is best possible
+    }
+    if (detected !== null && mediumConfidence === null) {
+      mediumConfidence = detected; // Keep first medium match as fallback
     }
   }
 
-  // Fall back to first medium-confidence match
-  if (result === null) {
-    for (const detect of detectors) {
-      const detected = detect();
-      if (detected !== null) {
-        result = detected;
-        break;
-      }
-    }
-  }
+  // Prefer high confidence, fall back to medium
+  const result = highConfidence ?? mediumConfidence;
 
   // Cache the result (including null for "no detection")
   cachedResult = result;

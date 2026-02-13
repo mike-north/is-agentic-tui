@@ -13,8 +13,9 @@ Detection results are now memoized at module level. This improves performance fo
 - New `DetectionOptions` type exported
 
 **Performance optimization:**
-- Process tree walking (used for GitHub Copilot CLI and Kiro CLI detection) now only runs when `Q_TERM` environment variable is set
-- This reduces latency for the common non-agentic-TUI case by avoiding expensive `ps` command spawning
+- Process tree walking (used to disambiguate GitHub Copilot CLI from Kiro CLI) is now gated on the `Q_TERM` environment variable
+- When `Q_TERM` is not set (the common case for non-agentic-TUI environments), no `ps` commands are spawned at all
+- This eliminates subprocess overhead entirely for the majority of use cases where the library returns "not in an agentic TUI"
 
 **Example:**
 ```ts

@@ -1,7 +1,7 @@
 {
   "name": "is-agentic-tui",
   "description": "Detect if code is running inside an agentic TUI (Claude Code, Cursor, Gemini CLI, etc.)",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "",
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
